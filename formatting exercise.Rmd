@@ -1,0 +1,46 @@
+---
+title: "formatting exercise"
+author: "xiaofei_wu"
+date: "9/18/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pacman::p_load("knitr")
+```
+
+
+## Extract from:  
+Bradley Efron and Trevor Hastie  
+*Computer Age Statistical Inference: Algorithms, Evidence, and Data Science*   
+*Cambridge University Press, 2016*    
+*https://web.stanford.edu/~hastie/CASI_files/PDF/casi*    
+
+
+   Modern Bayesian practice uses various strategies to construct an
+appropriate “prior” g$\left (\mu   \right )$in the absence of prior experience, leaving
+many statisticians unconvinced by the resulting Bayesian inferences.
+Our second example illustrates the difficulty.
+
+
+## Table 3.1 *Scores from two tests taken by 22 students,* mechanics *and* vectors.
+```{r echo=FALSE}
+table1<-data.frame(mechanics=c(7, 44, 49, 59, 34, 46, 0, 32, 49, 52, 44), vectors=c(51, 69, 41, 70, 42, 40, 40, 45, 57, 64, 61))
+row.names(table1)<-c(1:11)
+kable(t(table1))
+table2<-data.frame(mechanics=c(36, 42, 5, 22, 18, 41, 48, 31, 42, 46, 63), vectors=c(59, 60, 30, 58, 51, 63, 38, 42, 69, 49, 63))
+row.names(table2)<-c(12:22)
+kable(t(table2))
+
+```
+
+
+
+Table 3.1 shows the scores on two tests, mechanics and vectors, achieved by n D 22 students. The sample correlation coefficient between the two scores is $\hat{\theta}$ = 0.498,
+
+## $$\hat{\theta }=\sum_{i=1}^{22}\left ( m_{i}-\bar{m} \right )\left ( v_{i}-\bar{v}) \right /\left [ \sum_{i=1}^{22}\left ( m_{i}-\bar{m} \right)^{2} \sum_{i=1}^{22}\left ( v_{i}-\bar{v} \right) ^{2} \right ]^{1/2}$$
+
+## with $m$ and $v$ short for mechanics and vectors, $\bar{m}$ and $\bar{n}$ their averages.
+
+

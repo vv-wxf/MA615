@@ -1,0 +1,276 @@
+---
+title: "615_final"
+author: "xiaofei_wu"
+date: "12/15/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r packages}
+# install.packages("rjson")
+# Load the package required to read JSON files.
+library("rjson")
+library(jsonlite)
+
+require(maps)
+require(maptools)
+require(tidyverse)
+require(tidyr)
+require(magrittr)
+library(usmap)
+library(ggplot2)
+library(ggrepel)
+library(wordcloud)
+library(tm)
+library(knitr)
+library(tidytext)
+```
+
+```{r load data, echo=FALSE}
+# Load data business.
+business <- stream_in(file("final_project_615/yelp_dataset/business.json"))
+review_sample<-stream_in(file("final_project_615/yelp_dataset/review_sample1.csv"))
+user_sample<-stream_in(file("final_project_615/yelp_dataset/user_sample1.csv"))
+# Print the result.
+print(business)
+# see all columns
+colnames(business)
+
+#delete all state that's not in r using subset function
+state<- subset(business, state!="BAS"&state!="CON"&state!="DOW"&state!="DUR"&state!="XGM"&state!= "XWY"&state!= "XGL"&state!= "AB"&state!= "BC"&state!= "ON"&state!= "QC")
+```
+
+
+
+## World Map of Yelp Business
+```{r fig.width=12,fig.height=6, warning=FALSE, message=FALSE, echo=FALSE}
+# create a layer of borders
+mapWorld <- borders("world", colour="white", fill="lightblue") 
+ggplot() + mapWorld +
+  theme(axis.line = element_blank(), 
+        axis.text = element_blank(), 
+        axis.ticks = element_blank(), 
+        axis.title = element_blank(), 
+        plot.background = element_blank()) +
+  geom_point(data = business, 
+             aes(x = longitude, y = latitude, color = stars), 
+             size = 2, 
+             alpha = 0.6) +
+  ggtitle('Figure 1: World Map of Yelp Business') +
+  theme(legend.title = element_text(size = 10), 
+        legend.text = element_text(size = 10),
+        legend.justification=c(0,0), legend.position=c(0,0.3))
+
+```
+
+## US Map of Yelp Business
+```{r fig.width=12,fig.height=6, warning=FALSE, message=FALSE, echo=FALSE}
+# create a layer of borders
+mapUSA <- borders("usa", colour="white", fill="lightblue") 
+ggplot() + mapUSA +
+  theme(axis.line = element_blank(), 
+        axis.text = element_blank(), 
+        axis.ticks = element_blank(), 
+        axis.title = element_blank(), 
+        plot.background = element_blank()) +
+  geom_point(data = business, 
+             aes(x = longitude, y = latitude, color = stars), 
+             size = 5, 
+             alpha = 0.6) +
+  ggtitle('Figure 2: USA Map of Yelp Business') +
+  theme(legend.title = element_text(size = 10), 
+        legend.text = element_text(size = 10),
+        legend.justification=c(0,0), legend.position=c(0,0.3))
+```
+
+## State Maps
+
+## Business Density
+```{r}
+# count the number of business in different states
+statemap <- state %>%
+  group_by(state) %>%
+  count(state)%>%
+  rename(n_business = n)
+# check all observations are counted
+sum(statemap$n_business)==nrow(state) #TRUE
+statemap$state
+
+# creat a STATE map for Yelp Business Density in US
+plot_usmap(regions = "states", data = statemap, values = "n_business")+scale_fill_continuous(low = "white", high = "orange",name = "Yelp Business Density in US", label = scales::comma) + 
+  theme(legend.position = "right")
+
+# creat a STATE map for Yelp Business Density in US
+plot_usmap(regions = "states", data = statemap, values = "n_business")+scale_fill_continuous(low = "white", high = "orange",name = "Yelp Business Density in US", label = scales::comma) + 
+  theme(legend.position = "right")
+
+# create a layer of borders
+mapCounty <- borders("state", colour="white", fill="lightblue") 
+ggplot() + mapCounty +
+  theme(axis.line = element_blank(), 
+        axis.text = element_blank(), 
+        axis.ticks = element_blank(), 
+        axis.title = element_blank(), 
+        plot.background = element_blank()) +
+  geom_point(data = business, 
+             aes(x = longitude, y = latitude, color = stars), 
+             size = 1, 
+             alpha = 0.6) +
+  ggtitle('Figure 3: state Map of Yelp Business') +
+  theme(legend.title = element_text(size = 10), 
+        legend.text = element_text(size = 10),
+        legend.justification=c(0,0), legend.position=c(0,0.3))+
+  geom_text_repel(data = business, aes(x = longitude, y = latitude, label = state)) 
+
+
+# count the number of city in different states
+citymap <- state %>%
+  group_by(city) %>%
+  count(city)%>%
+  rename(n_business = n)
+# check all observations are counted
+sum(statemap$n_business)==nrow(state) #TRUE
+citymap$city
+
+# creat a US map for Yelp Business Density in US
+library(sf)
+library(mapview)
+
+ggmap(bw_map) +
+  geom_point(data = geo_per_destination,
+             aes(x = lon, y = lat), color = "red") +
+  geom_point(data = geo_per_source,
+             aes(x = lon, y = lat), color = "purple")
+```
+## Review Density
+```{r}
+# count the number of reviews in different states
+reviewmap <- state %>%
+  group_by(state) %>%
+  count(review_count)%>%
+  mutate(nreview = review_count*n)
+
+reviewn<-aggregate(reviewmap$nreview, by=list(Category=reviewmap$state), FUN=sum)%>%
+  rename(state = Category)%>%
+  rename(n_reviews = x)
+reviewmap <- merge(statemap,reviewn,by="state")%>%
+  mutate(review_density = n_reviews/n_business)
+
+# creat a US map for Yelp Business Reviews Number in US
+plot_usmap(regions = "states", data = reviewmap, values = "n_reviews")+scale_fill_continuous(low = "white", high = "brown",name = "Yelp Business Review Numbers in US", label = scales::comma) + 
+  theme(legend.position = "right")
+##### The review numbers seems to be propotional to number of business
+ 
+
+
+# creat a US map for Yelp Business Reviews Density in US
+# to be more fair, delete the state with only one or two business
+reviewmap_2<-filter(reviewmap,n_business>2)
+
+plot_usmap(regions = "states", data = reviewmap_2, values = "review_density")+scale_fill_continuous(low = "white", high = "brown",name = "Yelp Business Review Density in US", label = scales::comma) + theme(legend.position = "right")
+
+##### The review density do not follow the number of business. 
+##### People from some state are more tend to leave some comments. 
+```
+## Star Rate 
+```{r}
+# count the number of stars in different states
+starmap <- state %>%
+  group_by(state) %>%
+  count(stars)%>%
+  mutate(nstars = stars*n)
+star<-aggregate(starmap$nstars, by=list(Category=starmap$state), FUN=sum)%>%
+  rename(state = Category)%>%
+  rename(sum_star = x)
+
+starmap <- merge(star,statemap,by="state")%>%
+  mutate(mean_star = sum_star/n_business)
+
+# to be more fair, delete the state with one or two business
+starmap_2<-filter(starmap,n_business>2)
+# creat a US map for Yelp Business Reviews Density in US
+plot_usmap(regions = "states", data = starmap_2, values = "mean_star")+scale_fill_continuous(low = "white", high = "red",name = "Yelp Business Average Rate Star in US", label = scales::comma) + theme(legend.position = "right")
+```
+
+## aggerate correlation 
+```{r}
+sum1<-merge(reviewmap,starmap,by = "state")
+cor1<-cor(sum1[,c(2,3,4,7)])
+as.tibble(cor1)
+
+# leave buisness with five or more comments
+sum2<-filter(sum1,sum1$n_business.x>4)
+cor2<-cor(sum2[,c(2,3,4,7)])
+as.tibble(cor2)
+# cor between mean_star and rate density is 0.69138460
+### RESULT : State with more reviews have better overall rate. 
+# prople are more likely to leave a comment when they like their meal.  
+```
+
+## user
+```{r}
+
+```
+
+## review
+
+## review cloud
+```{r,warning=false}
+
+review<-review_sample
+# convert all text to lower case
+review$text <- tolower(review$text)
+# remove punctuation
+review$text <- gsub("[[:punct:]]", "", review$text)
+# remove punctuation
+review$text <- gsub("\\n", "", review$text)
+# split sentences into words. 
+review$text<- strsplit(review$text, " ")
+text<-unlist(review$text)
+
+# Remove stop-words
+text = removeWords(text, c(stopwords("english"),"end","get","say","years","come","going","2012"))
+text = text[c(1:100000)]
+# take a look at the top 100 frequent words. 
+sort(table(text), decreasing=T)[1:100]
+
+docs <- Corpus(VectorSource(text))
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+
+
+
+# Make cloud
+
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=100, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+```
+
+## SENTIMENTAL ANALYZE
+```{r warning=FALSE, message=FALSE, echo=FALSE}
+# Create a function that break customer reviews in words and analyze word counts that contribute to each sentiment
+sentiment<-merge(sentiments,d,by ='word')%>% group_by(sentiment) %>%
+    top_n(10)
+
+positive<-kable(sentiment%>%filter(sentiment == "positive"), format = "latex", booktabs = TRUE)
+negative<-kable(sentiment%>%filter(sentiment == "negative"), format = "latex", booktabs = TRUE)
+positive
+negative
+
+```
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

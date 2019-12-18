@@ -33,12 +33,14 @@ library(wordcloud)
 library(tm)
 library(knitr)
 library(tidytext)
+library(png)
+library(imager)
 ```
 
 ```{r load data, echo=FALSE}
 # Load data business.
-business <- stream_in(file("final_project_615/yelp_dataset/business.json"))
-review_sample<-stream_in(file("final_project_615/yelp_dataset/review_sample1.csv"))
+business <- stream_in(file("business.json"))
+review_sample<-stream_in(file("review_sample1.csv"))
 user_sample<-stream_in(file("final_project_615/yelp_dataset/user_sample1.csv"))
 # Print the result.
 print(business)
@@ -64,12 +66,13 @@ ggplot() + mapWorld +
   geom_point(data = business, 
              aes(x = longitude, y = latitude, color = stars), 
              size = 2, 
-             alpha = 0.6) +
+             alpha = 0.6)+
   ggtitle('Figure 1: World Map of Yelp Business') +
   theme(legend.title = element_text(size = 10), 
         legend.text = element_text(size = 10),
         legend.justification=c(0,0), legend.position=c(0,0.3))
 
+ggsave("businessWorld.png")
 ```
 
 ## US Map of Yelp Business
@@ -90,6 +93,8 @@ ggplot() + mapUSA +
   theme(legend.title = element_text(size = 10), 
         legend.text = element_text(size = 10),
         legend.justification=c(0,0), legend.position=c(0,0.3))
+
+ggsave("businessUS.png")
 ```
 
 ## State Maps
@@ -106,32 +111,31 @@ sum(statemap$n_business)==nrow(state) #TRUE
 statemap$state
 
 # creat a STATE map for Yelp Business Density in US
-plot_usmap(regions = "states", data = statemap, values = "n_business")+scale_fill_continuous(low = "white", high = "orange",name = "Yelp Business Density in US", label = scales::comma) + 
+plot_usmap(regions = "states", data = statemap, values = "n_business")+scale_fill_continuous(low = "white", high = "orange",name = "Figure 3: Yelp Business Density in states", label = scales::comma) + 
   theme(legend.position = "right")
 
-# creat a STATE map for Yelp Business Density in US
-plot_usmap(regions = "states", data = statemap, values = "n_business")+scale_fill_continuous(low = "white", high = "orange",name = "Yelp Business Density in US", label = scales::comma) + 
-  theme(legend.position = "right")
 
 # create a layer of borders
-mapCounty <- borders("state", colour="white", fill="lightblue") 
-ggplot() + mapCounty +
+mapstates <- borders("state", colour="white", fill="lightblue") 
+ggplot() + mapstates +
   theme(axis.line = element_blank(), 
         axis.text = element_blank(), 
         axis.ticks = element_blank(), 
         axis.title = element_blank(), 
         plot.background = element_blank()) +
   geom_point(data = business, 
-             aes(x = longitude, y = latitude, color = stars), 
-             size = 1, 
+             aes(x = longitude, y = latitude), 
+             size = .5, 
              alpha = 0.6) +
-  ggtitle('Figure 3: state Map of Yelp Business') +
+  ggtitle('Figure 3: USA Map of Yelp Business Devided by states') +
   theme(legend.title = element_text(size = 10), 
         legend.text = element_text(size = 10),
-        legend.justification=c(0,0), legend.position=c(0,0.3))+
-  geom_text_repel(data = business, aes(x = longitude, y = latitude, label = state)) 
+        legend.justification=c(0,0), legend.position=c(0,0.3)) 
 
-
+ggsave("distribution.png")
+img <- readPNG("distribution.png")
+print(img)
+plot(img)
 # count the number of city in different states
 citymap <- state %>%
   group_by(city) %>%
@@ -142,14 +146,7 @@ sum(statemap$n_business)==nrow(state) #TRUE
 citymap$city
 
 # creat a US map for Yelp Business Density in US
-library(sf)
-library(mapview)
 
-ggmap(bw_map) +
-  geom_point(data = geo_per_destination,
-             aes(x = lon, y = lat), color = "red") +
-  geom_point(data = geo_per_source,
-             aes(x = lon, y = lat), color = "purple")
 ```
 ## Review Density
 ```{r}
@@ -165,9 +162,9 @@ reviewn<-aggregate(reviewmap$nreview, by=list(Category=reviewmap$state), FUN=sum
 reviewmap <- merge(statemap,reviewn,by="state")%>%
   mutate(review_density = n_reviews/n_business)
 
-# creat a US map for Yelp Business Reviews Number in US
-plot_usmap(regions = "states", data = reviewmap, values = "n_reviews")+scale_fill_continuous(low = "white", high = "brown",name = "Yelp Business Review Numbers in US", label = scales::comma) + 
-  theme(legend.position = "right")
+# # creat a US map for Yelp Business Reviews Number in US
+# plot_usmap(regions = "states", data = reviewmap, values = "n_reviews")+scale_fill_continuous(low = "white", high = "brown",name = "Figure 4: Yelp Business Review Numbers in US", label = scales::comma) + 
+#   theme(legend.position = "right")
 ##### The review numbers seems to be propotional to number of business
  
 
@@ -176,8 +173,9 @@ plot_usmap(regions = "states", data = reviewmap, values = "n_reviews")+scale_fil
 # to be more fair, delete the state with only one or two business
 reviewmap_2<-filter(reviewmap,n_business>2)
 
-plot_usmap(regions = "states", data = reviewmap_2, values = "review_density")+scale_fill_continuous(low = "white", high = "brown",name = "Yelp Business Review Density in US", label = scales::comma) + theme(legend.position = "right")
+plot_usmap(regions = "states", data = reviewmap_2, values = "review_density")+scale_fill_continuous(low = "white", high = "brown",name = "Figure 4: Yelp Business Review Density in US", label = scales::comma) + theme(legend.position = "right")
 
+ggsave("density.png")
 ##### The review density do not follow the number of business. 
 ##### People from some state are more tend to leave some comments. 
 ```
@@ -198,7 +196,9 @@ starmap <- merge(star,statemap,by="state")%>%
 # to be more fair, delete the state with one or two business
 starmap_2<-filter(starmap,n_business>2)
 # creat a US map for Yelp Business Reviews Density in US
-plot_usmap(regions = "states", data = starmap_2, values = "mean_star")+scale_fill_continuous(low = "white", high = "red",name = "Yelp Business Average Rate Star in US", label = scales::comma) + theme(legend.position = "right")
+plot_usmap(regions = "states", data = starmap_2, values = "mean_star")+scale_fill_continuous(low = "white", high = "red",name = "Figure 5: Yelp Business Average Rate Star in US", label = scales::comma) + theme(legend.position = "right")
+
+ggsave("average.png")
 ```
 
 ## aggerate correlation 
@@ -235,6 +235,10 @@ review$text <- gsub("[[:punct:]]", "", review$text)
 review$text <- gsub("\\n", "", review$text)
 # split sentences into words. 
 review$text<- strsplit(review$text, " ")
+
+
+
+
 text<-unlist(review$text)
 
 # Remove stop-words
@@ -249,8 +253,6 @@ m <- as.matrix(dtm)
 v <- sort(rowSums(m),decreasing=TRUE)
 d <- data.frame(word = names(v),freq=v)
 head(d, 10)
-
-
 
 # Make cloud
 
@@ -271,6 +273,133 @@ positive<-kable(sentiment%>%filter(sentiment == "positive"), format = "latex", b
 negative<-kable(sentiment%>%filter(sentiment == "negative"), format = "latex", booktabs = TRUE)
 positive
 negative
-
 ```
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+# count the number of reviews in different business
+group_review <- review %>%
+  group_by(business_id) %>%
+  count(business_id)
+# get the top 5 buisness with the most reviews 
+top_review<-group_review[order(-group_review$n),]
+ top_review<- top_review[c(1:5),]
+ 
+star_b<-aggregate(review$stars, by=list(Category=review$business_id), FUN=sum)%>%
+  rename(business_id = Category)%>%
+  rename(sum_star = x)
+
+#combine stars
+top_review<-merge(top_review,star_b,by = "business_id")
+top_review%>%mutate(average_star=sum_star/n)
+```
+```{r,warning=false}
+## restaurant top 1
+b1<-filter(review, business_id == top_review[1,1])
+
+text1<-unlist(b1$text)
+# Remove stop-words
+text1 = removeWords(text1, c(stopwords("english"),"end","get","say","years","come","going","2012"))
+saveRDS(text1, file = "text1.Rdata")
+text1 <- readRDS('text1.Rdata')
+
+
+# take a look at the top 10 frequent words. 
+sort(table(text1), decreasing=T)[1:10]
+docs1 <- Corpus(VectorSource(text1))
+dtm1 <- TermDocumentMatrix(docs1)
+m1 <- as.matrix(dtm1)
+v1 <- sort(rowSums(m1),decreasing=TRUE)
+d1 <- data.frame(word = names(v1),freq=v1)
+# Make cloud
+set.seed(1234)
+wordcloud(words = d1$word, freq = d1$freq, min.freq = 1,
+          max.words=100, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+
+## restaurant top 2
+b2<-filter(review, business_id == top_review[2,1])
+text2<-unlist(b2$text)
+# Remove stop-words
+text2 = removeWords(text2, c(stopwords("english"),"end","get","say","years","come","going","2012"))
+saveRDS(text2, file = "text2.Rdata")
+text2 <- readRDS('text2.Rdata')
+# take a look at the top 10 frequent words. 
+sort(table(text2), decreasing=T)[1:10]
+docs2 <- Corpus(VectorSource(text2))
+dtm2 <- TermDocumentMatrix(docs2)
+m2 <- as.matrix(dtm2)
+v2 <- sort(rowSums(m2),decreasing=TRUE)
+d2 <- data.frame(word = names(v2),freq=v2)
+# Make cloud
+set.seed(1234)
+wordcloud(words = d2$word, freq = d2$freq, min.freq = 1,
+          max.words=100, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+## restaurant top 3
+b3<-filter(review, business_id == top_review[3,1])
+text3<-unlist(b3$text)
+# Remove stop-words
+text3 = removeWords(text3, c(stopwords("english"),"end","get","say","years","come","going","2012"))
+saveRDS(text3, file = "text3.Rdata")
+text3 <- readRDS('text3.Rdata')
+
+# take a look at the top 10 frequent words. 
+sort(table(text3), decreasing=T)[1:10]
+text3 = text3[c(1:1000)]
+docs3 <- Corpus(VectorSource(text3))
+dtm3 <- TermDocumentMatrix(docs3)
+m3 <- as.matrix(dtm3)
+v3 <- sort(rowSums(m3),decreasing=TRUE)
+d3 <- data.frame(word = names(v3),freq=v3)
+# Make cloud
+set.seed(1234)
+wordcloud(words = d3$word, freq = d3$freq, min.freq = 1,
+          max.words=100, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+## restaurant top 4
+b4<-filter(review, business_id == top_review[4,1])
+text4<-unlist(b4$text)
+# Remove stop-words
+text4 = removeWords(text4, c(stopwords("english"),"end","get","say","years","come","going","2012"))
+saveRDS(text4, file = "text4.Rdata")
+text4 <- readRDS('text4.Rdata')
+# take a look at the top 10 frequent words. 
+sort(table(text4), decreasing=T)[1:10]
+text4 = text4[c(1:1000)]
+docs4 <- Corpus(VectorSource(text4))
+dtm4 <- TermDocumentMatrix(docs4)
+m4 <- as.matrix(dtm4)
+v4 <- sort(rowSums(m4),decreasing=TRUE)
+d4 <- data.frame(word = names(v4),freq=v4)
+# Make cloud
+set.seed(1234)
+wordcloud(words = d4$word, freq = d4$freq, min.freq = 1,
+          max.words=100, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+
+## restaurant top 5
+b5<-filter(review, business_id == top_review[5,1])
+text5<-unlist(b5$text)
+# Remove stop-words
+text5 = removeWords(text5, c(stopwords("english"),"end","get","say","years","come","going","2012"))
+saveRDS(text5, file = "text5.Rdata")
+text5 <- readRDS('text5.Rdata')
+# take a look at the top 10 frequent words. 
+t5<-sort(table(text5), decreasing=T)[1:10]
+text5 = text5[c(1:1000)]
+docs5 <- Corpus(VectorSource(text5))
+dtm5 <- TermDocumentMatrix(docs5)
+m5 <- as.matrix(dtm5)
+v5 <- sort(rowSums(m5),decreasing=TRUE)
+d5 <- data.frame(word = names(v5),freq=v5)
+# Make cloud
+set.seed(1234)
+wordcloud(words = d5$word, freq = d5$freq, min.freq = 1,
+          max.words=100, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+```
